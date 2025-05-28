@@ -14,7 +14,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   jira:
-    image: custom-jira:jndi
+    image: ghcr.io/teams-work-ltd/atlassian-jira-hikaricp:main
     container_name: jira-app
     depends_on:
       - postgres

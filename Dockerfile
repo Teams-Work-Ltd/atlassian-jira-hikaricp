@@ -1,4 +1,4 @@
-FROM atlassian/jira-software:latest
+FROM atlassian/jira-software:10.3.4
 
 USER root
 
