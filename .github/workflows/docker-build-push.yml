@@ -34,17 +34,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Get Jira version from Dockerfile
+        id: jira-version
+        run: |
+          VERSION=$(grep '^FROM atlassian/jira-software:' Dockerfile | cut -d: -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted Jira version: $VERSION"
+      
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,format=long
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ steps.jira-version.outputs.version }},enable=${{ github.ref == format('refs/heads/main') || github.ref == format('refs/heads/master') }}
+            type=sha,format=long
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
