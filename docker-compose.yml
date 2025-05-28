@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: jira-db
+    environment:
+      POSTGRES_DB: jiradb
+      POSTGRES_USER: jirauser
+      POSTGRES_PASSWORD: jirapass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  jira:
+    image: custom-jira:jndi
+    container_name: jira-app
+    depends_on:
+      - postgres
+    environment:
+      ATL_DB_TYPE: postgres72
+      ATL_DB_SCHEMA_NAME: public
+      ATL_JDBC_URL: jdbc:postgresql://postgres:5432/jiradb
+      ATL_JDBC_USER: jirauser
+      ATL_JDBC_PASSWORD: jirapass
+      ATL_JDBC_DRIVER: org.postgresql.Driver
+      ATL_DB_POOLMINSIZE: 1
+      ATL_DB_POOLMAXSIZE: 10
+      ATL_DB_MAXWAITMILLIS: 30000
+      ATL_DB_EXTENSIONS: ""
+    ports:
+      - "8080:8080"
+    volumes:
+      - jira-home:/var/atlassian/application-data/jira
+
+volumes:
+  pgdata:
+  jira-home:
