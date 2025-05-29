@@ -2,15 +2,15 @@ name: Build and Push Jira Docker Image
 
 on:
   push:
-    branches: [main, master]
+    branches: [ main, master ]
     # Only trigger for changes to Docker-related files
     paths:
-      - "Dockerfile"
-      - "entrypoint.sh"
-      - "patched_entrypoint.py"
-      - ".github/workflows/**"
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - 'patched_entrypoint.py'
+      - '.github/workflows/**'
   pull_request:
-    branches: [main, master]
+    branches: [ main, master ]
   # Allow manual trigger
   workflow_dispatch:
 
@@ -21,26 +21,26 @@ permissions:
 
 jobs:
   build-and-push:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
-
+    runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+      
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
+      
       - name: Get Jira version from Dockerfile
         id: jira-version
         run: |
           VERSION=$(grep '^FROM atlassian/jira-software:' Dockerfile | cut -d: -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted Jira version: $VERSION"
-
+      
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -51,16 +51,35 @@ jobs:
             type=ref,event=pr
             type=raw,value=${{ steps.jira-version.outputs.version }},enable=${{ github.ref == format('refs/heads/main') || github.ref == format('refs/heads/master') }}
             type=sha,format=long
-
+      
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64,amd64
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
+        with:
+          driver-opts: |
+            image=moby/buildkit:master
+          platforms: linux/arm64,linux/amd64
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Build and push
-        uses: useblacksmith/build-push-action@v1
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/arm64,linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
